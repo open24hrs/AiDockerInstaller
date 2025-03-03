@@ -20,19 +20,17 @@ RUN git clone https://github.com/elizaOS/eliza.git .
 # Copy configuration files
 COPY .env.docker .env
 
-# Set memory and build optimization flags
+# Set build optimization flags
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-ENV NODE_ENV="production"
-ENV PNPM_FLAGS="--production=false --network-concurrency 1 --network-timeout 100000"
+ENV PNPM_SKIP_PRUNING="true"
+ENV NODE_MODULES_CACHE="false"
 
 # Install dependencies and build with optimizations (following DO's recommended pattern)
-RUN pnpm install $PNPM_FLAGS \
+RUN pnpm install --production=false \
     && pnpm build \
     && rm -rf node_modules \
     && pnpm install --production --frozen-lockfile \
-    && rm -rf .git tests docs \
-    && pnpm store prune \
-    && pnpm cache clean --force
+    && rm -rf .git tests docs
 
 # Expose ports for web client
 EXPOSE 3000
