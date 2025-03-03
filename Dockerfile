@@ -24,8 +24,8 @@ COPY .env.docker .env
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV PNPM_SKIP_PRUNING="true"
 ENV NODE_MODULES_CACHE="false"
-ENV PORT=3000
-ENV CLIENT_PORT=8000
+ENV PORT=8080
+ENV CLIENT_PORT=3000
 
 # Install dependencies and build with optimizations (following DO's recommended pattern)
 RUN pnpm install --production=false --no-frozen-lockfile \
@@ -42,7 +42,8 @@ RUN echo '{\
     "script": "pnpm",\
     "args": "start",\
     "env": {\
-    "PORT": "3000"\
+    "PORT": "8080",\
+    "HOST": "0.0.0.0"\
     }\
     },\
     {\
@@ -50,15 +51,16 @@ RUN echo '{\
     "script": "pnpm",\
     "args": "start:client",\
     "env": {\
-    "PORT": "8000"\
+    "PORT": "3000",\
+    "HOST": "0.0.0.0"\
     }\
     }\
     ]\
     }' > ecosystem.config.json
 
-# Expose ports for web client
+# Expose ports for health checks and web client
+EXPOSE 8080
 EXPOSE 3000
-EXPOSE 8000
 
 # Start the application using PM2 in no-daemon mode
 CMD ["pm2-runtime", "start", "ecosystem.config.json"] 
