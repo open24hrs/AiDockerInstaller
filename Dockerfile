@@ -21,7 +21,7 @@ RUN git clone https://github.com/elizaOS/eliza.git .
 COPY .env.docker .env
 
 # Install dependencies and build
-RUN pnpm install
+RUN pnpm install --no-frozen-lockfile
 RUN pnpm build
 
 # Expose ports for web client
