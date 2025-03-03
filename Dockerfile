@@ -33,13 +33,16 @@ ENV NODE_ENV="development"
 # Install all dependencies first
 RUN pnpm install --no-frozen-lockfile --shamefully-hoist
 
-# Build core package
-RUN cd packages/core && pnpm build && cd ../..
+# Build core package and generate docs
+RUN cd packages/core && \
+    pnpm build && \
+    pnpm typedoc --out ./docs src/index.ts && \
+    cd ../..
 
 # Build documentation
 RUN cd docs && \
     mkdir -p docs/api && \
-    cp -r ../packages/core/api/* docs/api/ && \
+    cp -r ../packages/core/docs/* docs/api/ && \
     pnpm build && \
     cd ..
 
