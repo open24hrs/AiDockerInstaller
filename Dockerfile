@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pnpm
-RUN npm install -g pnpm@latest
+# Install pnpm and pm2
+RUN npm install -g pnpm@latest pm2@latest
 
 # Set working directory
 WORKDIR /app
@@ -24,6 +24,8 @@ COPY .env.docker .env
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV PNPM_SKIP_PRUNING="true"
 ENV NODE_MODULES_CACHE="false"
+ENV PORT=3000
+ENV CLIENT_PORT=8000
 
 # Install dependencies and build with optimizations (following DO's recommended pattern)
 RUN pnpm install --production=false --no-frozen-lockfile \
@@ -32,9 +34,31 @@ RUN pnpm install --production=false --no-frozen-lockfile \
     && pnpm install --production --no-frozen-lockfile \
     && rm -rf .git tests docs
 
+# Create PM2 process file
+RUN echo '{\
+    "apps": [\
+    {\
+    "name": "server",\
+    "script": "pnpm",\
+    "args": "start",\
+    "env": {\
+    "PORT": "3000"\
+    }\
+    },\
+    {\
+    "name": "client",\
+    "script": "pnpm",\
+    "args": "start:client",\
+    "env": {\
+    "PORT": "8000"\
+    }\
+    }\
+    ]\
+    }' > ecosystem.config.json
+
 # Expose ports for web client
 EXPOSE 3000
 EXPOSE 8000
 
-# Start the application
-CMD ["sh", "-c", "pnpm start & pnpm start:client"] 
+# Start the application using PM2 in no-daemon mode
+CMD ["pm2-runtime", "start", "ecosystem.config.json"] 
