@@ -30,10 +30,18 @@ ENV PORT=8080
 ENV CLIENT_PORT=3000
 ENV NODE_ENV="development"
 
-# Install dependencies and build
-RUN pnpm install --no-frozen-lockfile --shamefully-hoist \
-    && pnpm -r build \
-    && rm -rf ~/.cache/pnpm
+# Install all dependencies first
+RUN pnpm install --no-frozen-lockfile --shamefully-hoist
+
+# Build core package
+RUN cd packages/core && pnpm build && cd ../..
+
+# Build documentation
+RUN cd docs && \
+    mkdir -p docs/api && \
+    cp -r ../packages/core/api/* docs/api/ && \
+    pnpm build && \
+    cd ..
 
 # Clean up and install production dependencies
 RUN rm -rf node_modules/.vite tests docs \
