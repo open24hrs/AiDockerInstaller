@@ -26,10 +26,10 @@ ENV PNPM_SKIP_PRUNING="true"
 ENV NODE_MODULES_CACHE="false"
 
 # Install dependencies and build with optimizations (following DO's recommended pattern)
-RUN pnpm install --production=false \
+RUN pnpm install --production=false --no-frozen-lockfile \
     && pnpm build \
     && rm -rf node_modules \
-    && pnpm install --production --frozen-lockfile \
+    && pnpm install --production --no-frozen-lockfile \
     && rm -rf .git tests docs
 
 # Expose ports for web client
