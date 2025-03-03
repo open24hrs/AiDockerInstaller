@@ -30,18 +30,25 @@ ENV PORT=8080
 ENV CLIENT_PORT=3000
 ENV NODE_ENV="development"
 
-# Install and build in separate layers with cleanup
-RUN pnpm install --no-frozen-lockfile --shamefully-hoist \
+# Install dependencies and build core package first
+RUN cd core && pnpm install --no-frozen-lockfile && pnpm build && cd ..
+
+# Link core package and install client dependencies
+RUN cd client && pnpm link ../core && pnpm install --no-frozen-lockfile --shamefully-hoist \
+    && cd .. \
     && pnpm store prune \
     && rm -rf ~/.cache/pnpm
 
-# Build with memory optimizations
-RUN cd client && pnpm build \
+# Build client with core dependency
+RUN cd client \
+    && pnpm build \
+    && rm -rf node_modules/.vite \
     && cd .. \
-    && rm -rf client/node_modules/.vite \
     && rm -rf tests docs \
-    && pnpm store prune \
-    && pnpm install --prod --no-frozen-lockfile --shamefully-hoist
+    && pnpm store prune
+
+# Install production dependencies
+RUN pnpm install --prod --no-frozen-lockfile --shamefully-hoist
 
 # Create PM2 process file with memory limits
 RUN echo '{\
