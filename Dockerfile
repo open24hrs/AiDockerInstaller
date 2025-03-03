@@ -26,12 +26,11 @@ ENV PNPM_SKIP_PRUNING="true"
 ENV NODE_MODULES_CACHE="false"
 ENV PORT=8080
 ENV CLIENT_PORT=3000
+ENV NODE_ENV="development"
 
-# Install dependencies and build with optimizations (following DO's recommended pattern)
-RUN pnpm install --production=false --no-frozen-lockfile \
+# Install all dependencies including dev dependencies
+RUN pnpm install --no-frozen-lockfile \
     && pnpm build \
-    && rm -rf node_modules \
-    && pnpm install --production --no-frozen-lockfile \
     && rm -rf .git tests docs
 
 # Create PM2 process file
@@ -43,7 +42,8 @@ RUN echo '{\
     "args": "start",\
     "env": {\
     "PORT": "8080",\
-    "HOST": "0.0.0.0"\
+    "HOST": "0.0.0.0",\
+    "NODE_ENV": "development"\
     }\
     },\
     {\
@@ -52,7 +52,8 @@ RUN echo '{\
     "args": "start:client",\
     "env": {\
     "PORT": "3000",\
-    "HOST": "0.0.0.0"\
+    "HOST": "0.0.0.0",\
+    "NODE_ENV": "development"\
     }\
     }\
     ]\
