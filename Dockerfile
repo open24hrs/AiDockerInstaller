@@ -1,5 +1,5 @@
-# Use Node.js 23.3.0 as the base image
-FROM node:23.3.0-slim
+# Build stage
+FROM node:23.3.0-slim AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,79 +9,58 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Install pnpm and pm2
-RUN npm install -g pnpm@latest pm2@latest
+# Install pnpm
+RUN npm install -g pnpm@latest
 
 # Set working directory
 WORKDIR /app
 
-# Clone ElizaOS repository (shallow clone to save memory)
-RUN git clone --depth 1 https://github.com/elizaOS/eliza.git . \
-    && rm -rf .git
+# Copy package files
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/core/package.json ./packages/core/
+COPY packages/adapter-sqlite/package.json ./packages/adapter-sqlite/
+COPY packages/adapter-sqljs/package.json ./packages/adapter-sqljs/
+COPY packages/adapter-supabase/package.json ./packages/adapter-supabase/
+COPY packages/adapter-pglite/package.json ./packages/adapter-pglite/
 
-# Copy configuration files
-COPY .env.docker .env
+# Install dependencies (without frozen-lockfile since we don't have pnpm-lock.yaml)
+RUN pnpm install
 
-# Set build optimization flags
-ENV NODE_OPTIONS="--max-old-space-size=2048"
-ENV PNPM_SKIP_PRUNING="true"
-ENV NODE_MODULES_CACHE="false"
+# Copy source files
+COPY . .
+
+# Build application
+RUN pnpm build
+
+# Production stage
+FROM node:23.3.0-slim
+
+# Install pnpm
+RUN npm install -g pnpm@latest
+
+WORKDIR /app
+
+# Copy built files and dependencies
+COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/packages/core/package.json ./packages/core/
+COPY --from=builder /app/packages/core/dist ./packages/core/dist
+COPY --from=builder /app/packages/adapter-*/dist ./packages/adapter-*/dist
+COPY --from=builder /app/packages/adapter-*/package.json ./packages/adapter-*/
+COPY --from=builder /app/pnpm-lock.yaml ./
+
+# Install production dependencies only
+RUN pnpm install --prod
+
+# Set environment variables
 ENV PORT=8080
 ENV CLIENT_PORT=3000
-ENV NODE_ENV="development"
+ENV NODE_ENV=production
+ENV ENABLE_PLUGINS=false
+ENV ENABLE_EXTENSIONS=false
 
-# Install all dependencies first
-RUN pnpm install --no-frozen-lockfile --shamefully-hoist
-
-# Build core package and generate docs
-RUN cd packages/core && \
-    pnpm build && \
-    pnpm typedoc --out ./docs src/index.ts && \
-    cd ../..
-
-# Build documentation
-RUN cd docs && \
-    mkdir -p docs/api && \
-    cp -r ../packages/core/docs/* docs/api/ && \
-    pnpm build && \
-    cd ..
-
-# Clean up and install production dependencies
-RUN rm -rf node_modules/.vite tests docs \
-    && pnpm store prune \
-    && pnpm install --prod --no-frozen-lockfile --shamefully-hoist
-
-# Create PM2 process file with memory limits
-RUN echo '{\
-    "apps": [\
-    {\
-    "name": "server",\
-    "script": "pnpm",\
-    "args": "start",\
-    "env": {\
-    "PORT": "8080",\
-    "HOST": "0.0.0.0",\
-    "NODE_ENV": "development"\
-    },\
-    "max_memory_restart": "1G"\
-    },\
-    {\
-    "name": "client",\
-    "script": "pnpm",\
-    "args": "start:client",\
-    "env": {\
-    "PORT": "3000",\
-    "HOST": "0.0.0.0",\
-    "NODE_ENV": "development"\
-    },\
-    "max_memory_restart": "1G"\
-    }\
-    ]\
-    }' > ecosystem.config.json
-
-# Expose ports for health checks and web client
+# Expose the port
 EXPOSE 8080
 EXPOSE 3000
 
-# Start the application using PM2 in no-daemon mode
-CMD ["pm2-runtime", "start", "ecosystem.config.json"] 
+# Start the application
+CMD ["pnpm", "start"] 
