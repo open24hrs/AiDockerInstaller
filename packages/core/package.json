@@ -1,0 +1,22 @@
+{
+    "name": "@elizaos/core",
+    "version": "1.0.0",
+    "private": true,
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsup",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@elizaos/adapter-sqlite": "workspace:*",
+        "@elizaos/adapter-sqljs": "workspace:*",
+        "@elizaos/adapter-supabase": "workspace:*",
+        "@elizaos/adapter-pglite": "workspace:*"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "tsup": "^8.3.5",
+        "@types/node": "^20.0.0"
+    }
+}
